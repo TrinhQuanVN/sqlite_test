@@ -1,3 +1,7 @@
+import imp
+
+
+import time
 import sqlite3
 from sqlite3 import Error
 import Extension as ex
@@ -6,73 +10,101 @@ class data_access:
         self.norm_path = norm_path
         self.work_path = work_path
         
-        
-    def create_database(self):
+    def success(self,check, if_success_print, if_not):
+        if check:
+            print(if_success_print)
+            return
+        print(if_not)
+
+    def execute(self, sql, parameter=None):
         try:
             conn = sqlite3.connect(self.norm_path)
             cur = conn.cursor()
-            
-            # create tables
-            cur.execute("""CREATE TABLE IF NOT EXISTS norm (
+            if isinstance(sql, str):
+                cur.execute(sql, parameter) if parameter else cur.execute(sql)
+            else:
+                for i in range(len(sql)):
+                    cur.execute(sql[i], parameter[i]) if parameter else cur.execute(sql[i])
+            conn.commit()
+            conn.close()
+            return 1
+        except Error as e:
+            print(f"Error occurred in {self.__class__.__name__}.execute: {e}")
+            if conn:
+                conn.close()
+            return 0
+
+    def excecutemany(self, sql, data:tuple):
+        try:
+            conn = sqlite3.connect(self.norm_path)
+            cur = conn.cursor()
+            cur.executemany(sql, data)
+            conn.commit()
+            conn.close()
+            return 1
+        except Error as e:
+            print(f"Error occurred in {self.__class__.__name__}.executemany: {e}")
+            if conn:
+                conn.close()
+            return 0      
+
+    def fetchall(self, sql):
+        pass
+
+    def create_database(self):
+        sql = ("""CREATE TABLE IF NOT EXISTS norm (
                         id text PRIMARY KEY,
                         name text,
                         unit text
-                        )""")
-            cur.execute("""CREATE TABLE IF NOT EXISTS worker (
+                        )""",
+                """CREATE TABLE IF NOT EXISTS worker (
+                id text PRIMARY KEY,
+                name text,
+                unit text
+                )""",
+                """CREATE TABLE IF NOT EXISTS machine (
                         id text PRIMARY KEY,
                         name text,
                         unit text
-                        )""")            
-            cur.execute("""CREATE TABLE IF NOT EXISTS machine (
+                        )""",
+                """CREATE TABLE IF NOT EXISTS material (
                         id text PRIMARY KEY,
                         name text,
                         unit text
-                        )""")
-            cur.execute("""CREATE TABLE IF NOT EXISTS material (
-                        id text PRIMARY KEY,
-                        name text,
-                        unit text
-                        )""")
-            cur.execute("""CREATE TABLE IF NOT EXISTS worker_norm (
+                        )""",
+                """CREATE TABLE IF NOT EXISTS worker_norm (
                         id text,
                         norm_id text,
                         amount real,
                         FOREIGN KEY (id) REFERENCES worker (id),
                         FOREIGN KEY (norm_id) REFERENCES norm (id)                       
-                        )""") 
-            cur.execute("""CREATE TABLE IF NOT EXISTS machine_norm (
+                        )""",
+                """CREATE TABLE IF NOT EXISTS machine_norm (
                         id text,
                         norm_id text,
                         amount real,
                         FOREIGN KEY (id) REFERENCES machine (id),
                         FOREIGN KEY (norm_id) REFERENCES norm (id)                        
-                        )""")
-            cur.execute("""CREATE TABLE IF NOT EXISTS material_norm (
+                        )"""
+                """CREATE TABLE IF NOT EXISTS material_norm (
                         id text,
                         norm_id text,
                         amount real,
                         FOREIGN KEY (id) REFERENCES material (id),
                         FOREIGN KEY (norm_id) REFERENCES norm (id) 
-                        )""") 
-            conn.commit()   
-            conn.close()                                           
-        except Error as e:
-            print(f"Error occurred in {self.__class__.__name__}.create_database: {e}")
-            if conn:
-                conn.close()
+                        )""",
+                        )
+        self.success(self.execute(sql),'database created!','Error on da.create_database')
+
+
+    def insert_norms(self, norms):
+        self.success(self.excecutemany('INSERT INTO norm VALUES(?,?,?)', norms),
+                    'norms inserted success','error on da.insert_norms')
                 
     def insert_norm(self, norm):
-        try:
-            conn = sqlite3.connect(self.norm_path)
-            cur = conn.cursor()
-            cur.execute("INSERT INTO norm(id, name, unit) VALUES(?,?,?)", norm) 
-            conn.commit()
-            conn.close()
-        except Error as e:
-            print(f"Error occurred in {self.__class__.__name__}.insert_norm: {e}")
-            if conn:
-                conn.close()
-            return 0
+        self.success(self.execute("INSERT INTO norm(id, name, unit) VALUES(?,?,?)",norm),
+                    'norm is inserted', 'error on da.insert_norm')
+        
         
     def get_norm(self, id=None):
         
@@ -169,12 +201,12 @@ def main():
     # print(norm)
     # db.update_norm('AB.12345',{'name': 'trinh tien quan','unit': 'person'}) 
     # db.insert_norm(('AB.12345','cong viec nay tao lam','m3'))
-    # values = ex.read_excel('D:\Python\QuanProject\qlcl project git\qlcl_project\PLHĐ nha thanh tra Kim Bang 2022.xls')
-    # for row in values:
-    #     if db.get_norm(row[0]):
-    #         continue
-    #     if ex.is_norm(row[1]):
-    #         db.insert_norm(row[1:4])
+    values = ex.read_excel('D:\Python\QuanProject\qlcl project git\qlcl_project\PLHĐ nha thanh tra Kim Bang 2022.xls')
+    for row in values:
+        if db.get_norm(row[0]):
+            continue
+        if ex.is_norm(row[1]):
+            db.insert_norm(row[1:4])
 
         # if ex.is_worker(row[1]):
         #     if not db.get_norm('worker') or not db.get_norm('worker',id=row[1]):
@@ -195,5 +227,7 @@ def main():
     a = db.get_norm()
     print(a)
 if __name__ == "__main__":
+    start = time.time()
     main()
+    print('time exe: ', round((time.time()-start)*10**3,2),' ms')
 
