@@ -1,5 +1,6 @@
 import datetime
 import re
+import time
 import pandas as pd
 import numpy as np
 import PySimpleGUI as sg
@@ -28,7 +29,7 @@ def is_dif_machine(letter):
 def is_dif_material(letter):   
     return True if letter in ['ZV999','zv999'] else False
 
-def read_excel(path) -> list:
+def read_excel(path) -> pd.DataFrame:
     dutoanDF = pd.read_excel(path,sheet_name='Chiết tính',header=4,usecols='c:g')
 
     # Fill cho hàng Mã CV
@@ -42,7 +43,7 @@ def read_excel(path) -> list:
     # Fill NA cho cột định mức 
     dutoanDF[dutoanDF.columns[4]].fillna(inplace=True,value=0)
     
-    return dutoanDF.values
+    return dutoanDF
 
 def display_date_time(date_time:datetime.datetime):
     format = r'%d/%m/%y'
@@ -68,14 +69,18 @@ def try_parse_string_to_float(text:str,message:str=fr"Value error: can not conve
         return text
         
 def main():
-    text = '22/10/99'
-    print(to_date(text))
-    a = np.datetime64('1992-10-20','D')
-    b= a + np.timedelta64(30,'m')
-    print(b.data)
+    df = read_excel('D:\Python\QuanProject\qlcl project git\qlcl_project\PLHĐ nha thanh tra Kim Bang 2022.xls')
+    # norm = df[df.iloc[1].map(is_norm)]
+    a = ['AG.11113', 'AG.31121', 'AG.13111']
+    norm = df[df.iloc[:,1].map(is_norm)]
+    norm_1 = norm[norm.iloc[:,1].isin(a)]
+    # print(norm_1.head(10))
+    print(df.iloc[1])
 
 if __name__ == "__main__":
+    start = time.time()
     main()
+    print('time exe: ', round((time.time()-start)*10**3,2),' ms')
 
 
     
